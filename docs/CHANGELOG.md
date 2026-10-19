@@ -26,3 +26,6 @@ Built in stages, each verified before the next.
 
 ## Known issues
 - Feed includes non-US postings (UK/Canada). No location filter yet.
+
+## README trim — 2026-10-19
+- Removed Configuration, Discord setup, Run locally, Deploy and Operating sections from README (team already knows repo workflow). Setup steps remain in .env.example.
