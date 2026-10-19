@@ -6,7 +6,9 @@ services:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       CHANNEL_ID: ${CHANNEL_ID}
       TERMS: ${TERMS:-Summer 2027}
-      CATEGORIES: ${CATEGORIES:-Software,Hardware}
+      CATEGORIES: ${CATEGORIES:-Software,Hardware,Quant}
+      US_ONLY: ${US_ONLY:-true}
+      # TITLE_KEYWORDS intentionally not passed: the built-in list in config.py applies.
       POLL_MINUTES: ${POLL_MINUTES:-15}
       MAX_POSTS_PER_CYCLE: ${MAX_POSTS_PER_CYCLE:-25}
       MAX_AGE_DAYS: ${MAX_AGE_DAYS:-14}

@@ -10,7 +10,9 @@ and remembers what it has posted in SQLite. Runs as one Docker container on kron
 ```
 every POLL_MINUTES
   └─ GET listings.json  (If-None-Match: <etag>  → usually 304, no download)
-  └─ filter: active + visible + TERMS + CATEGORIES + posted within MAX_AGE_DAYS
+  └─ filter: active + visible + TERMS + posted within MAX_AGE_DAYS
+           + (CATEGORIES or title matches a finance/business keyword)
+           + at least one US location (US_ONLY)
   └─ diff against seen.db  → new IDs
   └─ post up to MAX_POSTS_PER_CYCLE (oldest first), mark each ID only after it sends
   └─ write /data/heartbeat (used by Docker HEALTHCHECK)
@@ -21,12 +23,20 @@ every POLL_MINUTES
 - **Failed sends** (Discord outage, 5xx) aren't marked, so they retry next cycle.
   Messages Discord rejects as invalid (4xx) are skipped permanently.
 - **Restart-safe**: state lives in the `/data` volume.
+- **Filter changes don't flood**: a fingerprint of the filters is stored in the DB; when it changes,
+  newly matching postings are marked seen silently and only postings that appear afterwards get posted.
+- **Finance/Business**: Simplify has no finance category, so titles matching keywords
+  (finance, banking, accounting, consulting, strategy, sales, risk, …) are pulled in from any
+  category and labeled Finance/Business. Classic IB/accounting/consulting programs mostly aren't in this feed.
+- **US only**: allowlist match on state codes/names, NYC/SF/LA, "USA"/"United States". Foreign locations are
+  dropped from the card; postings with no US location are skipped.
 
 | File | Role |
 |---|---|
 | `bot/config.py` | All settings from env vars |
-| `bot/feed.py` | Download (ETag-cached), normalize categories, filter |
-| `bot/store.py` | SQLite set of seen IDs |
+| `bot/feed.py` | Download (ETag-cached), normalize categories, filter, keyword match |
+| `bot/location.py` | US location detection |
+| `bot/store.py` | SQLite: seen IDs + meta (filter fingerprint) |
 | `bot/poller.py` | Decides what to post this cycle (pure logic, unit-tested) |
 | `bot/embeds.py` | Embed + Apply button |
 | `bot/main.py` | Discord client + 15-min loop |

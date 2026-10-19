@@ -22,6 +22,16 @@ class SeenStore:
             " seen_at INTEGER NOT NULL,"
             " posted INTEGER NOT NULL DEFAULT 0)"
         )
+        # Small key/value table for bot state (e.g. the filter fingerprint).
+        self.db.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        self.db.commit()
+
+    def get_meta(self, key: str) -> str | None:
+        row = self.db.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+        return row[0] if row else None
+
+    def set_meta(self, key: str, value: str) -> None:
+        self.db.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (key, value))
         self.db.commit()
 
     def is_empty(self) -> bool:

@@ -7,10 +7,13 @@ with no body, so most polls cost almost nothing.
 from __future__ import annotations
 
 import logging
+import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import aiohttp
+
+from .location import us_locations
 
 log = logging.getLogger(__name__)
 
@@ -64,18 +67,38 @@ class Listing:
         )
 
 
+KEYWORD_LABEL = "Finance/Business"
+
+
+def keyword_regex(keywords: list[str]) -> re.Pattern | None:
+    """One case-insensitive regex matching any keyword as a whole word/phrase."""
+    kws = [k.strip() for k in keywords if k.strip()]
+    if not kws:
+        return None
+    return re.compile(r"\b(?:" + "|".join(re.escape(k) for k in kws) + r")\b", re.I)
+
+
 def filter_listings(
     raw: list[dict],
     terms: list[str],
     categories: list[str],
     max_age_days: int,
     now: float | None = None,
+    keywords: list[str] = (),
+    us_only: bool = False,
 ) -> list[Listing]:
-    """Keep active, visible postings for our terms/categories, newest first."""
+    """Keep active, visible postings for our terms/categories, newest first.
+
+    A posting passes the "what" check if its category is wanted OR its title
+    matches a keyword. Keyword-only matches get relabeled Finance/Business.
+    With us_only, postings need at least one US location, and only the US
+    locations are kept for display.
+    """
     now = now if now is not None else time.time()
     cutoff = now - max_age_days * 86400 if max_age_days > 0 else 0
     wanted_terms = {t.lower() for t in terms}
     wanted_cats = {normalize_category(c) for c in categories}
+    kw = keyword_regex(list(keywords))
 
     out: list[Listing] = []
     for d in raw:
@@ -86,10 +109,18 @@ def filter_listings(
         if wanted_terms and not wanted_terms & {t.lower() for t in d.get("terms") or []}:
             continue
         item = Listing.from_raw(d)
-        if wanted_cats and item.category not in wanted_cats:
-            continue
         if item.date_posted < cutoff:
             continue
+        if wanted_cats and item.category not in wanted_cats:
+            if kw and kw.search(item.title):
+                item = replace(item, category=KEYWORD_LABEL)
+            else:
+                continue
+        if us_only:
+            us = us_locations(item.locations)
+            if not us:
+                continue
+            item = replace(item, locations=us)
         out.append(item)
     out.sort(key=lambda x: x.date_posted, reverse=True)
     return out

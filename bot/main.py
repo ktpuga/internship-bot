@@ -16,7 +16,7 @@ from discord.ext import tasks
 from .config import Config
 from .embeds import build_embed, build_view
 from .feed import FeedClient
-from .poller import plan_cycle
+from .poller import FINGERPRINT_KEY, plan_cycle
 from .store import SeenStore
 
 log = logging.getLogger("bot")
@@ -73,6 +73,7 @@ class InternshipBot(discord.Client):
         plan = plan_cycle(raw, self.store, self.cfg)
         if plan.mark_silently:
             self.store.mark(plan.mark_silently)
+        self.store.set_meta(FINGERPRINT_KEY, plan.fingerprint)
 
         sent = 0
         for x in plan.to_post:
@@ -108,7 +109,8 @@ def main() -> None:
         asyncio.run(dry())
         return
     cfg.validate_for_discord()
-    log.info("starting: terms=%s categories=%s every %dmin", cfg.terms, cfg.categories or "ALL", cfg.poll_minutes)
+    log.info("starting: terms=%s categories=%s keywords=%d us_only=%s every %dmin",
+             cfg.terms, cfg.categories or "ALL", len(cfg.title_keywords), cfg.us_only, cfg.poll_minutes)
     InternshipBot(cfg).run(cfg.discord_token, log_handler=None)
 
 

@@ -14,6 +14,17 @@ DEFAULT_FEED_URL = (
 )
 
 
+# Title keywords that pull finance/business roles out of any category.
+# Whole-word, case-insensitive ("tax" won't match "Taxonomy").
+# Tuned against the live feed 2026-10-19. Override with TITLE_KEYWORDS ("" disables).
+DEFAULT_TITLE_KEYWORDS = (
+    "finance,financial,banking,investment,investments,accounting,accountant,audit,tax,"
+    "treasury,trading,trader,consulting,consultant,strategy,business,operations,marketing,"
+    "sales,risk,economics,economic,capital markets,wealth,asset management,private equity,"
+    "venture,actuarial,underwriting,credit,portfolio,fp&a"
+)
+
+
 def _csv(name: str, default: str = "") -> list[str]:
     raw = os.getenv(name, default)
     return [p.strip() for p in raw.split(",") if p.strip()]
@@ -32,6 +43,10 @@ class Config:
     terms: list[str] = field(default_factory=lambda: ["Summer 2027"])
     # Normalized categories to post. Empty list = post every category.
     categories: list[str] = field(default_factory=list)
+    # Title keywords that pull in postings from ANY category (labeled Finance/Business).
+    title_keywords: list[str] = field(default_factory=list)
+    # Only keep postings with at least one US location.
+    us_only: bool = False
     poll_minutes: int = 15
     db_path: str = "/data/seen.db"
     # Safety valve: never post more than this many in one cycle.
@@ -53,6 +68,8 @@ class Config:
             feed_url=os.getenv("FEED_URL", DEFAULT_FEED_URL),
             terms=_csv("TERMS", "Summer 2027"),
             categories=_csv("CATEGORIES", ""),
+            title_keywords=_csv("TITLE_KEYWORDS", DEFAULT_TITLE_KEYWORDS),
+            us_only=_bool("US_ONLY", True),
             poll_minutes=int(os.getenv("POLL_MINUTES", "15")),
             db_path=os.getenv("DB_PATH", "/data/seen.db"),
             max_posts_per_cycle=int(os.getenv("MAX_POSTS_PER_CYCLE", "25")),
@@ -61,6 +78,23 @@ class Config:
             dry_run=_bool("DRY_RUN", False),
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
         )
+
+    def filter_fingerprint(self) -> str:
+        """Stable hash of everything that decides WHICH postings match.
+
+        Stored in the DB; when it changes we silently seed the newly matching
+        postings instead of flooding the channel with them.
+        """
+        import hashlib
+        import json
+
+        key = {
+            "terms": sorted(t.lower() for t in self.terms),
+            "categories": sorted(c.lower() for c in self.categories),
+            "keywords": sorted(k.lower() for k in self.title_keywords),
+            "us_only": self.us_only,
+        }
+        return hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]
 
     def validate_for_discord(self) -> None:
         if not self.discord_token:

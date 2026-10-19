@@ -24,6 +24,12 @@ def cfg(**kw):
     return Config(**base)
 
 
+def prime(store, ids, c=None):
+    """Simulate an existing DB: some IDs seen and current filters recorded."""
+    store.mark(ids)
+    store.set_meta("filter_fingerprint", (c or cfg()).filter_fingerprint())
+
+
 def test_category_aliases():
     assert normalize_category("Software Engineering") == "Software"
     assert normalize_category("Data Science, AI & Machine Learning") == "AI/ML/Data"
@@ -58,7 +64,7 @@ def test_seed_post_latest():
 
 def test_new_items_detected_and_capped():
     store = SeenStore(":memory:")
-    store.mark(["id0"])
+    prime(store, ["id0"])
     raw = [item(i, age_days=i % 10) for i in range(40)]
     plan = plan_cycle(raw, store, cfg(max_posts_per_cycle=25), NOW)
     assert len(plan.to_post) == 25 and plan.backlog == 14
@@ -70,9 +76,61 @@ def test_new_items_detected_and_capped():
 
 def test_unsent_items_retry_next_cycle():
     store = SeenStore(":memory:")
-    store.mark(["seed"])
+    prime(store, ["seed"])
     raw = [item(1), item(2)]
     p1 = plan_cycle(raw, store, cfg(), NOW)
     store.mark([p1.to_post[0].id], posted=True)  # only first send succeeded
     p2 = plan_cycle(raw, store, cfg(), NOW)
     assert [x.id for x in p2.to_post] == [p1.to_post[1].id]
+
+
+# --- v0.2: keywords, US-only, filter-change reseed ---
+from bot.location import is_us
+
+
+def test_is_us():
+    for s in ["Atlanta, GA", "NYC", "SF", "Remote in USA", "Georgia", "United States", "Washington, DC"]:
+        assert is_us(s), s
+    for s in ["London, UK", "Toronto, ON, Canada", "Remote in UK", "Singapore", "Dublin, Ireland"]:
+        assert not is_us(s), s
+
+
+def test_keyword_match_relabels_and_respects_word_boundaries():
+    raw = [
+        {**item(1, cat="AI/ML/Data"), "title": "Finance Analytics Intern"},
+        {**item(2, cat="AI/ML/Data"), "title": "Taxonomy Research Intern"},  # 'tax' must not match
+        {**item(3, cat="Product"), "title": "Product Manager Intern"},
+        item(4, cat="Software"),
+    ]
+    got = {x.id: x.category for x in filter_listings(raw, ["Summer 2027"], ["Software"], 14, NOW,
+                                                     keywords=["finance", "tax"])}
+    assert got == {"id1": "Finance/Business", "id4": "Software"}
+
+
+def test_us_only_drops_foreign_and_trims_locations():
+    raw = [
+        {**item(1), "locations": ["London, UK"]},
+        {**item(2), "locations": ["Toronto, ON, Canada", "NYC"]},
+    ]
+    got = filter_listings(raw, ["Summer 2027"], [], 14, NOW, us_only=True)
+    assert [(x.id, x.locations) for x in got] == [("id2", ["NYC"])]
+
+
+def test_filter_change_seeds_silently_then_posts_normally():
+    store = SeenStore(":memory:")
+    raw = [item(1, cat="Software"), item(2, cat="Quant"), item(3, cat="Quant")]
+    c1 = cfg(categories=["Software"])
+    p = plan_cycle(raw, store, c1, NOW)            # first run
+    store.mark(p.mark_silently); store.set_meta("filter_fingerprint", p.fingerprint)
+    c2 = cfg(categories=["Software", "Quant"])      # widen filters
+    p = plan_cycle(raw, store, c2, NOW)
+    assert p.to_post == [] and sorted(p.mark_silently) == ["id2", "id3"]
+    store.mark(p.mark_silently); store.set_meta("filter_fingerprint", p.fingerprint)
+    raw.append(item(9, cat="Quant"))                # genuinely new posting
+    p = plan_cycle(raw, store, c2, NOW)
+    assert [x.id for x in p.to_post] == ["id9"]
+
+
+def test_fingerprint_ignores_order_and_case():
+    assert cfg(categories=["Software", "Quant"]).filter_fingerprint() == \
+           cfg(categories=["quant", "software"]).filter_fingerprint()

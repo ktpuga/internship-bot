@@ -67,6 +67,7 @@ def test_cycle_posts_and_retries(monkeypatch, tmp_path):
     cfg = Config(discord_token="x", channel_id=1, db_path=str(tmp_path / "seen.db"), max_age_days=0)
     bot = InternshipBot(cfg)
     bot.store.mark(["preexisting"])  # skip seeding
+    bot.store.set_meta("filter_fingerprint", cfg.filter_fingerprint())
     raw = [item(1), {**item(2), "title": "FAILS"}]
     ch = FakeChannel(fail_ids={"FAILS"})
     run(bot, ch, raw, monkeypatch)

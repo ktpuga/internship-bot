@@ -29,11 +29,19 @@ Category spellings vary (`Software` vs `Software Engineering`) — normalized in
 Fields: id, company_name, title, locations[], category, terms[], url, company_url,
 date_posted (unix), active, is_visible, sponsorship, degrees.
 
+## Decisions (2026-10-19)
+| Decision | Choice | Why |
+|---|---|---|
+| Deploy | Dokploy Application, Dockerfile build, volume → /data | Nixpacks couldn't infer the start command and ignores our Dockerfile |
+| Finance/business | Quant category + title keyword match, labeled Finance/Business | Simplify has no finance category; no clean structured feed for IB/accounting/consulting; scraping rejected (brittle, ToS) |
+| Channel | Same channel for everything | Yash's call |
+| Locations | US only (allowlist) | Yash's call |
+| Filter changes | Fingerprint in DB → silent reseed | Prevent flooding when filters widen |
+
 ## Status
-See CHANGELOG.md. Next: Yash creates the Discord app (S0), tests locally, deploys.
+v0.1 live on kronos. v0.2 (finance/business + US-only) built and tested, pending push + redeploy (see CHANGELOG.md).
 
 ## Ideas / backlog (not started)
-- Location filter (feed includes UK/Canada postings)
 - Slash commands: `/setchannel`, `/filters`, `/search company`
 - Per-category channel routing (#swe, #hardware, #security)
 - Keyword routing for security roles (title contains security/cyber/SOC)

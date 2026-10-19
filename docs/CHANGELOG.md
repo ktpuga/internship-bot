@@ -25,7 +25,21 @@ Built in stages, each verified before the next.
 **S3 — slash commands**: skipped for v1 (scope decision).
 
 ## Known issues
-- Feed includes non-US postings (UK/Canada). No location filter yet.
+- ~~Feed includes non-US postings~~ fixed in v0.2 (US_ONLY).
 
 ## README trim — 2026-10-19
 - Removed Configuration, Discord setup, Run locally, Deploy and Operating sections from README (team already knows repo workflow). Setup steps remain in .env.example.
+
+## v0.2.0 — 2026-10-19
+Deployed v0.1 to kronos via Dokploy (Application service, build type switched from Nixpacks → Dockerfile,
+volume `internship-bot-data` → `/data`). Then:
+
+- **Finance/Business**: Simplify feed has no finance category. Added `TITLE_KEYWORDS` (built-in default list in
+  `config.py`) — titles matching any keyword are posted from any category, labeled Finance/Business (teal).
+  Added `Quant` to default CATEGORIES. Same channel as tech postings (decision).
+- **US only**: new `bot/location.py`, `US_ONLY` (default true). Allowlist matching; card shows only US locations.
+- **Filter fingerprint**: `meta` table in SQLite; changing TERMS/CATEGORIES/keywords/US_ONLY silently seeds newly
+  matching postings instead of flooding the channel.
+- Verified against live feed: keywords add ~115 Finance/Business postings (Summer 2027, all-time); US filter drops
+  166 postings, all UK/Canada. Upgrade path: v0.1 DB → v0.2 seeds 236 silently, next cycle posts 0. 15/15 tests.
+- Known noise: TikTok "Business Integrity" ML research roles match "business". Tune keywords if it's annoying.

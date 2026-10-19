@@ -12,7 +12,7 @@ import aiohttp
 
 from .config import Config
 from .feed import FeedClient
-from .poller import plan_cycle
+from .poller import FINGERPRINT_KEY, plan_cycle
 from .store import SeenStore
 
 
@@ -27,6 +27,7 @@ async def main() -> None:
     for x in plan.to_post:
         print(f"[{x.category}] {x.company} — {x.title} | {', '.join(x.locations)} | {x.url}")
     store.mark(plan.mark_silently)
+    store.set_meta(FINGERPRINT_KEY, plan.fingerprint)
     store.mark((x.id for x in plan.to_post), posted=True)
     print(f"would post {len(plan.to_post)}, seeded {len(plan.mark_silently)}, "
           f"backlog {plan.backlog}, DB now has {store.count()} ids")

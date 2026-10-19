@@ -11,6 +11,7 @@ CATEGORY_COLORS = {
     "AI/ML/Data": 0x9B59B6,
     "Product": 0x2ECC71,
     "Quant": 0xE74C3C,
+    "Finance/Business": 0x1ABC9C,
 }
 
 
