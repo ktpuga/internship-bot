@@ -1,0 +1,24 @@
+services:
+  internship-bot:
+    build: .
+    restart: unless-stopped
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      CHANNEL_ID: ${CHANNEL_ID}
+      TERMS: ${TERMS:-Summer 2027}
+      CATEGORIES: ${CATEGORIES:-Software,Hardware}
+      POLL_MINUTES: ${POLL_MINUTES:-15}
+      MAX_POSTS_PER_CYCLE: ${MAX_POSTS_PER_CYCLE:-25}
+      MAX_AGE_DAYS: ${MAX_AGE_DAYS:-14}
+      SEED_POST_LATEST: ${SEED_POST_LATEST:-0}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - bot-data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  bot-data:
