@@ -13,7 +13,7 @@ import aiohttp
 
 from .config import Config, Source
 from .feed import FeedClient
-from .poller import fingerprint_key, plan_cycle, store_id
+from .poller import fingerprint_key, migrate_legacy_ids, plan_cycle, store_id
 from .store import SeenStore
 
 
@@ -52,6 +52,7 @@ async def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     store = SeenStore(cfg.db_path)
+    migrate_legacy_ids(store, cfg)
     async with aiohttp.ClientSession() as session:
         for source in cfg.sources:
             await run_source(source, cfg, store, session)

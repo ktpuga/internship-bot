@@ -186,3 +186,31 @@ def test_fingerprint_ignores_order_and_case():
     assert cfg(categories=["Software", "Quant"]).filter_fingerprint(src()) == cfg(
         categories=["quant", "software"]
     ).filter_fingerprint(src())
+
+
+# --- per-source first run + legacy migration ---
+from bot.poller import migrate_legacy_ids
+
+
+def test_second_source_first_run_honors_seed_post_latest():
+    store = SeenStore(":memory:")
+    prime(store, ["a", "b"])  # internship already running
+    ng = src(name="newgrad", terms=[])
+    raw = [item(i, terms=(), age_days=i) for i in range(5)]
+    p = plan_cycle(raw, store, cfg(seed_post_latest=2), ng, NOW)
+    assert [x.id for x in p.to_post] == ["id1", "id0"]
+    assert len(p.mark_silently) == 3 and all(i.startswith("newgrad:") for i in p.mark_silently)
+
+
+def test_legacy_ids_migrated_so_upgrade_does_not_seed_post():
+    store = SeenStore(":memory:")
+    raw = [item(1), item(2)]
+    store.mark(["id1", "id2"])  # DB written by the single-source version
+    store.set_meta("filter_fingerprint", "old")
+    c = cfg(seed_post_latest=3, sources=[src()])
+    assert migrate_legacy_ids(store, c) == 2
+    assert migrate_legacy_ids(store, c) == 0  # idempotent
+    assert store.get_meta("filter_fingerprint") is None
+    assert store.unseen(["internship:id1", "internship:id2", "id1"]) == {"id1"}
+    p = plan_cycle(raw, store, c, src(), NOW)
+    assert p.to_post == []  # not treated as a first run -> no seed posts

@@ -121,3 +121,8 @@ def test_failed_source_does_not_block_others_but_fails_cycle(monkeypatch, tmp_pa
         asyncio.run(bot.run_cycle())
     # ...but the healthy source still posted
     assert ch.sent == ["Co1"]
+
+
+def test_footer_without_terms_has_no_dangling_bullet():
+    assert build_embed(listing(terms=[])).footer.text == "Source: Simplify.jobs"
+    assert build_embed(listing()).footer.text == "Source: Simplify.jobs • Summer 2027"

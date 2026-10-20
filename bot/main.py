@@ -17,7 +17,7 @@ from discord.ext import tasks
 from .config import Config, Source
 from .embeds import build_embed, build_view
 from .feed import FeedClient
-from .poller import fingerprint_key, plan_cycle, store_id
+from .poller import fingerprint_key, migrate_legacy_ids, plan_cycle, store_id
 from .store import SeenStore
 
 log = logging.getLogger("bot")
@@ -31,6 +31,7 @@ class InternshipBot(discord.Client):
         super().__init__(intents=intents)
         self.cfg = cfg
         self.store = SeenStore(cfg.db_path)
+        migrate_legacy_ids(self.store, cfg)
         self.http_session: aiohttp.ClientSession | None = None
         self.feeds: dict[str, FeedClient] = {}
         self.heartbeat = Path(cfg.db_path).with_name("heartbeat")

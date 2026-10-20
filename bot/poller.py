@@ -32,6 +32,22 @@ def store_id(source: Source, listing_id: str) -> str:
     return f"{source.name}:{listing_id}"
 
 
+# IDs saved before multi-source support belong to the internship feed.
+LEGACY_SOURCE = "internship"
+
+
+def migrate_legacy_ids(store: SeenStore, cfg: Config) -> int:
+    """Namespace pre-multi-source IDs so per-source first-run detection works on
+    an existing DB (otherwise the internship source would look 'empty')."""
+    for s in cfg.sources:
+        if s.name == LEGACY_SOURCE:
+            n = store.migrate_unprefixed(store_id(s, ""))
+            if n:
+                log.info("migrated %d legacy seen IDs under %r", n, s.name)
+            return n
+    return 0
+
+
 @dataclass
 class Plan:
     to_post: list[Listing]
@@ -63,7 +79,7 @@ def plan_cycle(
 ) -> Plan:
     fp = cfg.filter_fingerprint(source)
 
-    if store.is_empty():
+    if store.is_empty(store_id(source, "")):  # first run for THIS source
         # Seeding ignores max_age so the whole current feed counts as "seen".
         everything = _filter(raw, cfg, source, 0, now)
         latest = everything[: cfg.seed_post_latest]

@@ -56,3 +56,12 @@ Multi-source polling in one Discord process:
 - **Upgrade**: renaming the fingerprint meta key causes a one-time silent reseed of internship matches (no flood).
 - Verified: 15/15 unit tests (`PYTHONPATH=. pytest`). Deploy: set `NEWGRAD_CHANNEL_ID`, grant View/Send/Embed
   on the new channel, redeploy.
+
+### Review fixes (PR #1) — 2026-10-20
+- New Grad footer no longer ends in a dangling "•" (that feed has no terms).
+- First-run detection is now per source (`is_empty(prefix)`), so `SEED_POST_LATEST` works when New Grad is
+  enabled on an existing DB.
+- One-time, idempotent migration moves pre-multi-source seen IDs under `internship:` and drops the old
+  `filter_fingerprint` key — prevents the upgrade from looking like a first run and removes dead rows.
+- Verified on live feeds: main DB → this branch with SEED_POST_LATEST=3 posts 0 (1,222 IDs migrated);
+  enabling New Grad seeds 1,762 and posts 3; next cycle posts 0 on both. 19/19 tests.
