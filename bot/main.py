@@ -120,11 +120,17 @@ class InternshipBot(discord.Client):
         )
 
     async def run_cycle(self) -> None:
+        # One source failing must not skip the others, but the cycle still counts
+        # as failed so poll() doesn't write the heartbeat (Docker HEALTHCHECK).
+        failed = []
         for source in self.cfg.sources:
             try:
                 await self.run_source(source)
             except Exception:
                 log.exception("cycle failed for source %s", source.name)
+                failed.append(source.name)
+        if failed:
+            raise RuntimeError(f"sources failed: {', '.join(failed)}")
 
 
 def main() -> None:

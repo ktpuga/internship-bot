@@ -3,6 +3,7 @@
 import asyncio
 
 import discord
+import pytest
 
 from bot.config import Config
 from bot.embeds import build_embed, build_view, format_locations
@@ -93,3 +94,30 @@ def test_cycle_posts_and_retries(monkeypatch, tmp_path):
     ch3 = FakeChannel()
     run(bot, ch3, raw, monkeypatch)
     assert ch3.sent == []
+
+
+class BrokenFeed:
+    async def fetch(self):
+        raise RuntimeError("feed down")
+
+
+def test_failed_source_does_not_block_others_but_fails_cycle(monkeypatch, tmp_path):
+    intern, newgrad = src(), src(name="newgrad", channel_id=2, terms=[])
+    cfg = Config(
+        discord_token="x",
+        sources=[newgrad, intern],
+        db_path=str(tmp_path / "seen.db"),
+        max_age_days=0,
+    )
+    bot = InternshipBot(cfg)
+    bot.store.mark([store_id(intern, "preexisting")])
+    bot.store.set_meta(fingerprint_key(intern), cfg.filter_fingerprint(intern))
+    ch = FakeChannel()
+    monkeypatch.setattr(bot, "get_channel", lambda _id: ch)
+    monkeypatch.setattr("bot.main.asyncio.sleep", _noop)
+    bot.feeds = {"newgrad": BrokenFeed(), "internship": FakeFeed([item(1)])}
+    # cycle raises so poll() skips the heartbeat...
+    with pytest.raises(RuntimeError, match="newgrad"):
+        asyncio.run(bot.run_cycle())
+    # ...but the healthy source still posted
+    assert ch.sent == ["Co1"]

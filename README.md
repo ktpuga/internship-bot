@@ -28,6 +28,7 @@ every POLL_MINUTES
   Shared filters: `CATEGORIES`, `TITLE_KEYWORDS`, `US_ONLY`, caps, age.
 - **First boot** marks every current posting as seen without posting (no 1,000-message flood).
   Set `SEED_POST_LATEST=5` to post the 5 newest so the channel isn't empty.
+  This only applies on a fresh DB: a source enabled later (e.g. New Grad) seeds fully silently.
 - **Failed sends** (Discord outage, 5xx) aren't marked, so they retry next cycle.
   Messages Discord rejects as invalid (4xx) are skipped permanently.
 - **Restart-safe**: state lives in the `/data` volume.
