@@ -46,7 +46,10 @@ def build_embed(x: Listing) -> discord.Embed:
     e.add_field(name="Category", value=x.category, inline=True)
     if x.sponsorship and x.sponsorship != "Other":
         e.add_field(name="Sponsorship", value=x.sponsorship, inline=True)
-    e.set_footer(text="Source: Simplify.jobs • " + ", ".join(x.terms))
+    footer = "Source: Simplify.jobs"
+    if x.terms:  # New Grad listings have no terms
+        footer += " • " + ", ".join(x.terms)
+    e.set_footer(text=footer)
     return e
 
 

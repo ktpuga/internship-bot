@@ -43,3 +43,25 @@ volume `internship-bot-data` → `/data`). Then:
 - Verified against live feed: keywords add ~115 Finance/Business postings (Summer 2027, all-time); US filter drops
   166 postings, all UK/Canada. Upgrade path: v0.1 DB → v0.2 seeds 236 silently, next cycle posts 0. 15/15 tests.
 - Known noise: TikTok "Business Integrity" ML research roles match "business". Tune keywords if it's annoying.
+
+## v0.3.0 — 2026-10-19
+Multi-source polling in one Discord process:
+
+- **Sources**: `Config.sources` — always `internship` (`CHANNEL_ID` / `FEED_URL` / `TERMS`); optional `newgrad`
+  when `NEWGRAD_CHANNEL_ID` is set (default feed SimplifyJobs/New-Grad-Positions, empty terms).
+- **Isolation**: seen IDs stored as `{source}:{id}`; filter fingerprint meta key `filter_fingerprint:{source}`.
+  Shared CATEGORIES / TITLE_KEYWORDS / US_ONLY / caps across sources.
+- **Loop**: each poll cycle fetches every source (separate ETag clients), plans, posts to that source's channel;
+  one source failing does not skip the others.
+- **Upgrade**: renaming the fingerprint meta key causes a one-time silent reseed of internship matches (no flood).
+- Verified: 15/15 unit tests (`PYTHONPATH=. pytest`). Deploy: set `NEWGRAD_CHANNEL_ID`, grant View/Send/Embed
+  on the new channel, redeploy.
+
+### Review fixes (PR #1) — 2026-10-20
+- New Grad footer no longer ends in a dangling "•" (that feed has no terms).
+- First-run detection is now per source (`is_empty(prefix)`), so `SEED_POST_LATEST` works when New Grad is
+  enabled on an existing DB.
+- One-time, idempotent migration moves pre-multi-source seen IDs under `internship:` and drops the old
+  `filter_fingerprint` key — prevents the upgrade from looking like a first run and removes dead rows.
+- Verified on live feeds: main DB → this branch with SEED_POST_LATEST=3 posts 0 (1,222 IDs migrated);
+  enabling New Grad seeds 1,762 and posts 3; next cycle posts 0 on both. 19/19 tests.

@@ -34,8 +34,31 @@ class SeenStore:
         self.db.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (key, value))
         self.db.commit()
 
-    def is_empty(self) -> bool:
-        return self.db.execute("SELECT 1 FROM seen LIMIT 1").fetchone() is None
+    def is_empty(self, prefix: str = "") -> bool:
+        """True if no seen IDs start with `prefix` (whole table if prefix is "")."""
+        row = self.db.execute(
+            "SELECT 1 FROM seen WHERE substr(id, 1, ?) = ? LIMIT 1",
+            (len(prefix), prefix),
+        ).fetchone()
+        return row is None
+
+    def migrate_unprefixed(self, prefix: str) -> int:
+        """Move IDs saved before per-source namespacing (no ':') under `prefix`.
+
+        Idempotent: once nothing un-prefixed is left this is a no-op. Also drops the
+        old single-source fingerprint key, which nothing reads anymore.
+        """
+        n = self.db.execute("SELECT COUNT(*) FROM seen WHERE instr(id, ':') = 0").fetchone()[0]
+        if n:
+            self.db.execute(
+                "INSERT OR IGNORE INTO seen (id, seen_at, posted) "
+                "SELECT ? || id, seen_at, posted FROM seen WHERE instr(id, ':') = 0",
+                (prefix,),
+            )
+            self.db.execute("DELETE FROM seen WHERE instr(id, ':') = 0")
+        self.db.execute("DELETE FROM meta WHERE key = 'filter_fingerprint'")
+        self.db.commit()
+        return n
 
     def unseen(self, ids: Iterable[str]) -> set[str]:
         ids = list(ids)
