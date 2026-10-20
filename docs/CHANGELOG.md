@@ -43,3 +43,16 @@ volume `internship-bot-data` → `/data`). Then:
 - Verified against live feed: keywords add ~115 Finance/Business postings (Summer 2027, all-time); US filter drops
   166 postings, all UK/Canada. Upgrade path: v0.1 DB → v0.2 seeds 236 silently, next cycle posts 0. 15/15 tests.
 - Known noise: TikTok "Business Integrity" ML research roles match "business". Tune keywords if it's annoying.
+
+## v0.3.0 — 2026-10-19
+Multi-source polling in one Discord process:
+
+- **Sources**: `Config.sources` — always `internship` (`CHANNEL_ID` / `FEED_URL` / `TERMS`); optional `newgrad`
+  when `NEWGRAD_CHANNEL_ID` is set (default feed SimplifyJobs/New-Grad-Positions, empty terms).
+- **Isolation**: seen IDs stored as `{source}:{id}`; filter fingerprint meta key `filter_fingerprint:{source}`.
+  Shared CATEGORIES / TITLE_KEYWORDS / US_ONLY / caps across sources.
+- **Loop**: each poll cycle fetches every source (separate ETag clients), plans, posts to that source's channel;
+  one source failing does not skip the others.
+- **Upgrade**: renaming the fingerprint meta key causes a one-time silent reseed of internship matches (no flood).
+- Verified: 15/15 unit tests (`PYTHONPATH=. pytest`). Deploy: set `NEWGRAD_CHANNEL_ID`, grant View/Send/Embed
+  on the new channel, redeploy.
