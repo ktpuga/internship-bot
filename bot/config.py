@@ -129,5 +129,7 @@ class Config:
     def validate_for_discord(self) -> None:
         if not self.discord_token:
             raise SystemExit("DISCORD_TOKEN is not set")
-        if any(s.channel_id == 0 for s in self.sources):
-            raise SystemExit("CHANNEL_ID is not set")
+        for s in self.sources:
+            if not s.channel_id:
+                env = "CHANNEL_ID" if s.name == "internship" else "NEWGRAD_CHANNEL_ID"
+                raise SystemExit(f"{env} is not set")
