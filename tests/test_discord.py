@@ -1,4 +1,5 @@
 """Exercise the Discord layer with a fake channel (no network, no token)."""
+
 import asyncio
 
 import discord
@@ -8,7 +9,8 @@ from bot.embeds import build_embed, build_view, format_locations
 from bot.feed import Listing
 from bot.main import InternshipBot
 
-from test_core import NOW, item
+from bot.poller import fingerprint_key, store_id
+from test_core import item, src
 
 
 def listing(**kw):
@@ -30,7 +32,10 @@ def test_long_location_list_truncates():
 
 def test_apply_button_and_bad_url():
     v = build_view(listing())
-    assert v.children[0].url == "https://x/1" and v.children[0].style is discord.ButtonStyle.link
+    assert (
+        v.children[0].url == "https://x/1"
+        and v.children[0].style is discord.ButtonStyle.link
+    )
     assert build_view(listing(url="javascript:alert(1)")) is None
 
 
@@ -40,7 +45,9 @@ class FakeChannel:
 
     async def send(self, embed=None, view=None):
         if embed.fields[0].value in self.fail_ids:
-            raise discord.HTTPException(type("R", (), {"status": 503, "reason": "x"})(), "boom")
+            raise discord.HTTPException(
+                type("R", (), {"status": 503, "reason": "x"})(), "boom"
+            )
         self.sent.append(embed.title)
 
 
@@ -54,8 +61,8 @@ class FakeFeed:
 
 def run(bot, ch, raw, monkeypatch):
     monkeypatch.setattr(bot, "get_channel", lambda _id: ch)
-    bot.feed = FakeFeed(raw)
-    monkeypatch.setattr("bot.main.asyncio.sleep", _noop)  # skip the 1s spacing
+    bot.feeds = {s.name: FakeFeed(raw) for s in bot.cfg.sources}
+    monkeypatch.setattr("bot.main.asyncio.sleep", _noop)
     asyncio.run(bot.run_cycle())
 
 
@@ -64,10 +71,16 @@ async def _noop(*_):
 
 
 def test_cycle_posts_and_retries(monkeypatch, tmp_path):
-    cfg = Config(discord_token="x", channel_id=1, db_path=str(tmp_path / "seen.db"), max_age_days=0)
+    s = src()
+    cfg = Config(
+        discord_token="x",
+        sources=[s],
+        db_path=str(tmp_path / "seen.db"),
+        max_age_days=0,
+    )
     bot = InternshipBot(cfg)
-    bot.store.mark(["preexisting"])  # skip seeding
-    bot.store.set_meta("filter_fingerprint", cfg.filter_fingerprint())
+    bot.store.mark([store_id(s, "preexisting")])  # DB not empty
+    bot.store.set_meta(fingerprint_key(s), cfg.filter_fingerprint(s))
     raw = [item(1), {**item(2), "title": "FAILS"}]
     ch = FakeChannel(fail_ids={"FAILS"})
     run(bot, ch, raw, monkeypatch)
