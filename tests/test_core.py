@@ -214,3 +214,28 @@ def test_legacy_ids_migrated_so_upgrade_does_not_seed_post():
     assert store.unseen(["internship:id1", "internship:id2", "id1"]) == {"id1"}
     p = plan_cycle(raw, store, c, src(), NOW)
     assert p.to_post == []  # not treated as a first run -> no seed posts
+
+
+# --- Engineering keyword group ---
+from bot.config import DEFAULT_ENGINEERING_KEYWORDS
+
+
+def test_engineering_group_checked_before_finance_and_keeps_real_categories():
+    raw = [
+        {**item(1, cat="AI/ML/Data"), "title": "Manufacturing Data & Analytics Co-op"},  # both lists could match
+        {**item(2, cat="AI/ML/Data"), "title": "Finance Analytics Intern"},
+        {**item(3, cat="Hardware"), "title": "Systems Engineer Intern"},  # already wanted -> stays Hardware
+        {**item(4, cat="AI/ML/Data"), "title": "Search Quality ML Intern"},  # bare 'quality' must not match
+        {**item(5, cat="Product"), "title": "Robotics Engineer Intern"},
+    ]
+    got = {x.id: x.category for x in filter_listings(
+        raw, ["Summer 2027"], ["Hardware"], 14, NOW,
+        keywords=["finance", "analytics"],
+        keyword_groups=[("Engineering", DEFAULT_ENGINEERING_KEYWORDS.split(","))])}
+    assert got == {"id1": "Engineering", "id2": "Finance/Business", "id3": "Hardware", "id5": "Engineering"}
+
+
+def test_engineering_keywords_change_fingerprint():
+    assert cfg(engineering_keywords=["robotics"]).filter_fingerprint(src()) != \
+           cfg(engineering_keywords=[]).filter_fingerprint(src())
+

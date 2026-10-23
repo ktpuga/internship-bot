@@ -12,6 +12,7 @@ CATEGORY_COLORS = {
     "Product": 0x2ECC71,
     "Quant": 0xE74C3C,
     "Finance/Business": 0x1ABC9C,
+    "Engineering": 0xA0522D,
 }
 
 

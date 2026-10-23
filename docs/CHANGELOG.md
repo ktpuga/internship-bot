@@ -65,3 +65,14 @@ Multi-source polling in one Discord process:
   `filter_fingerprint` key — prevents the upgrade from looking like a first run and removes dead rows.
 - Verified on live feeds: main DB → this branch with SEED_POST_LATEST=3 posts 0 (1,222 IDs migrated);
   enabling New Grad seeds 1,762 and posts 3; next cycle posts 0 on both. 19/19 tests.
+
+## v0.4.0 — 2026-10-22
+- **Engineering keyword group**: `ENGINEERING_KEYWORDS` (built-in default in `config.py`) pulls mechanical /
+  manufacturing / robotics / aerospace / systems roles out of any category, labeled **Engineering** (sienna).
+  Generalized `filter_listings` to ordered `keyword_groups`; Engineering is checked before Finance/Business.
+- Simplify's repos are tech lists: only 2 "mechanical" and 6 "manufacturing" titles in ~2,000 US Summer 2027
+  postings; no structured ME feed found (scraping rejected). Expect ~1/week internship, a bit more for New Grad.
+- Bare "quality"/"automation"/"reliability" rejected (matched data-quality, AI automation, SRE roles); used
+  engineering phrases instead. Known noise: "AI Automation Engineer" matches "automation engineer".
+- Verified on live feeds: main DB → this change seeds 26 (internship) + 48 (new grad) silently, next cycle posts 0.
+  Engineering totals (all-time, US): 28 internship, 49 new grad. 21/21 tests.

@@ -31,6 +31,19 @@ DEFAULT_TITLE_KEYWORDS = (
 )
 
 
+# Title keywords that pull mechanical/manufacturing/systems roles out of any category,
+# labeled Engineering. Checked BEFORE the finance list (more specific). Phrases like
+# "quality engineer" avoid bare "quality", which mostly matches data/search-quality roles.
+# Tuned against the live feed 2026-10-22. Override with ENGINEERING_KEYWORDS ("" disables).
+DEFAULT_ENGINEERING_KEYWORDS = (
+    "mechanical,mechatronics,manufacturing,industrial,robotics,robot,aerospace,propulsion,"
+    "civil,structural,chemical,materials,thermal,hvac,plant,process engineer,"
+    "process engineering,quality engineer,quality engineering,systems engineer,"
+    "systems engineering,controls engineer,controls engineering,automation engineer,"
+    "reliability engineer,test engineer,design engineer,energy,cad,hardware,embedded,electrical"
+)
+
+
 def _csv(name: str, default: str = "") -> list[str]:
     raw = os.getenv(name, default)
     return [p.strip() for p in raw.split(",") if p.strip()]
@@ -57,6 +70,8 @@ class Config:
     categories: list[str] = field(default_factory=list)
     # Title keywords that pull in postings from ANY category (labeled Finance/Business).
     title_keywords: list[str] = field(default_factory=list)
+    # Same idea for mechanical/manufacturing/systems roles (labeled Engineering).
+    engineering_keywords: list[str] = field(default_factory=list)
     # Only keep postings with at least one US location.
     us_only: bool = False
     poll_minutes: int = 15
@@ -98,6 +113,7 @@ class Config:
             sources=sources,
             categories=_csv("CATEGORIES", ""),
             title_keywords=_csv("TITLE_KEYWORDS", DEFAULT_TITLE_KEYWORDS),
+            engineering_keywords=_csv("ENGINEERING_KEYWORDS", DEFAULT_ENGINEERING_KEYWORDS),
             us_only=_bool("US_ONLY", True),
             poll_minutes=int(os.getenv("POLL_MINUTES", "15")),
             db_path=os.getenv("DB_PATH", "/data/seen.db"),
@@ -122,6 +138,7 @@ class Config:
             "terms": sorted(t.lower() for t in source.terms),
             "categories": sorted(c.lower() for c in self.categories),
             "keywords": sorted(k.lower() for k in self.title_keywords),
+            "engineering": sorted(k.lower() for k in self.engineering_keywords),
             "us_only": self.us_only,
         }
         return hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]

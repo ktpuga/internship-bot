@@ -18,7 +18,7 @@ import logging
 from dataclasses import dataclass
 
 from .config import Config, Source
-from .feed import Listing, filter_listings
+from .feed import ENGINEERING_LABEL, Listing, filter_listings
 from .store import SeenStore
 
 log = logging.getLogger(__name__)
@@ -67,6 +67,7 @@ def _filter(
         now,
         keywords=cfg.title_keywords,
         us_only=cfg.us_only,
+        keyword_groups=[(ENGINEERING_LABEL, cfg.engineering_keywords)],
     )
 
 
