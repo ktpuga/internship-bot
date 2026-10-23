@@ -68,6 +68,7 @@ class Listing:
 
 
 KEYWORD_LABEL = "Finance/Business"
+ENGINEERING_LABEL = "Engineering"
 
 
 def keyword_regex(keywords: list[str]) -> re.Pattern | None:
@@ -86,11 +87,13 @@ def filter_listings(
     now: float | None = None,
     keywords: list[str] = (),
     us_only: bool = False,
+    keyword_groups: list[tuple[str, list[str]]] = (),
 ) -> list[Listing]:
     """Keep active, visible postings for our terms/categories, newest first.
 
     A posting passes the "what" check if its category is wanted OR its title
-    matches a keyword. Keyword-only matches get relabeled Finance/Business.
+    matches a keyword. Keyword-only matches get relabeled: `keyword_groups` are
+    (label, keywords) pairs checked in order, then `keywords` as Finance/Business.
     With us_only, postings need at least one US location, and only the US
     locations are kept for display.
     """
@@ -98,7 +101,9 @@ def filter_listings(
     cutoff = now - max_age_days * 86400 if max_age_days > 0 else 0
     wanted_terms = {t.lower() for t in terms}
     wanted_cats = {normalize_category(c) for c in categories}
-    kw = keyword_regex(list(keywords))
+    groups = [(label, keyword_regex(list(kws))) for label, kws in keyword_groups]
+    groups.append((KEYWORD_LABEL, keyword_regex(list(keywords))))
+    groups = [(label, rx) for label, rx in groups if rx is not None]
 
     out: list[Listing] = []
     for d in raw:
@@ -112,10 +117,10 @@ def filter_listings(
         if item.date_posted < cutoff:
             continue
         if wanted_cats and item.category not in wanted_cats:
-            if kw and kw.search(item.title):
-                item = replace(item, category=KEYWORD_LABEL)
-            else:
+            label = next((lb for lb, rx in groups if rx.search(item.title)), None)
+            if label is None:
                 continue
+            item = replace(item, category=label)
         if us_only:
             us = us_locations(item.locations)
             if not us:

@@ -37,6 +37,9 @@ every POLL_MINUTES
 - **Finance/Business**: Simplify has no finance category, so titles matching keywords
   (finance, banking, accounting, consulting, strategy, sales, risk, …) are pulled in from any
   category and labeled Finance/Business. Classic IB/accounting/consulting programs mostly aren't in this feed.
+- **Engineering**: same mechanism for mechanical/manufacturing/systems roles (mechanical, manufacturing,
+  robotics, aerospace, quality engineer, …), labeled Engineering and checked before Finance/Business.
+  Low volume: Simplify's feeds are tech-focused, so classic ME/civil/chemical roles are rare.
 - **US only**: allowlist match on state codes/names, NYC/SF/LA, "USA"/"United States". Foreign locations are
   dropped from the card; postings with no US location are skipped.
 
